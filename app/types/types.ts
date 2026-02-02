@@ -15,7 +15,7 @@ export interface Review {
     userAvatar: string;
     restaurantName: string;
     rating: number;
-    content: number;
+    content: string;
     imageUrl: string;
     timestamp: string;
     location?: string;

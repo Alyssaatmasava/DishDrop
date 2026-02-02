@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "./components/Header";
 import { AppTab } from "./types/types";
+import Feed from "./components/Feed";
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('feed');
@@ -18,14 +19,12 @@ const App: React.FC = () => {
       
       <main className="transition-all duration-700 animate-in fade-in slide-in-from-bottom-5">
         <div className="container mx-auto">
-          {/* {activeTab === 'feed' && <Feed />} */}
+          {activeTab === 'feed' && <Feed />}
           {/* {activeTab === 'discover' && <Discovery />}
           {activeTab === 'profile' && <ProfileView />} */}
         </div>
       </main>
-
-      <h1>Welcome to the App</h1>
-      <p>This is the main page of the application.</p>
+      
     </div>
   )
 };
