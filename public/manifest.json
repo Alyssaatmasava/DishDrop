@@ -1,0 +1,21 @@
+{
+  "name": "DishDrop - Culinary Social Network",
+  "short_name": "DishDrop",
+  "description": "Explore, document, and share dining experiences. Use AI-powered 'Craving Search' to find your next favorite meal based on exactly what you're in the mood for.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "permissions": [
+    "geolocation",
+    "camera",
+    "microphone"
+  ]
+}

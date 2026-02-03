@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DishDrop | Culinary Social Network",
-  description: "Culinary Social Network",
+  title: "DishDrop - Culinary Social Network",
+  description: "Explore, document, and share dining experiences. Use AI-powered 'Craving Search' to find your next favorite meal based on exactly what you're in the mood for.",
+  manifest: '/manifest.json', // Link to manifest file
 };
 
 export default function RootLayout({

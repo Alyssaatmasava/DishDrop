@@ -1,12 +1,14 @@
 export interface User {
-    id: string;
-    name: string;
-    username: string;
-    avatar: string;
-    bio: string;
-    following: number;
-    followers: number;
+  id: string;
+  name: string;
+  username: string;
+  avatar: string;
+  bio: string;
+  following: number;
+  followers: number;
+  email?: string;
 }
+
 
 export interface Review {
     id: string;
