@@ -34,3 +34,9 @@ export interface Recommendation {
 }
 
 export type AppTab = 'feed' | 'discover' | 'profile';
+
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+}

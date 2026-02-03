@@ -2,19 +2,13 @@
 'use client';
 
 import React from "react";
-import { User } from "../types";
+import { User } from "../types/types";
 
-const MOCK_USER: User = {
-  id: 'me',
-  name: 'Jordan Foodie',
-  username: 'jordan_eats',
-  avatar: 'https://picsum.photos/seed/dishdrop-me/200/200',
-  bio: 'Searching for the world\'s best bao bun. Part-time chef, full-time critic. I believe dessert is a human right.',
-  following: 428,
-  followers: 1205
-};
+interface ProfileViewProps {
+  user: User;
+}
 
-const ProfileView: React.FC = () => {
+const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
   return (
     <div className="max-w-6xl mx-auto py-20 px-6">
       <div className="bg-white rounded-[4rem] p-12 sm:p-20 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] border border-gray-50 mb-16 relative overflow-hidden">
@@ -26,8 +20,8 @@ const ProfileView: React.FC = () => {
           <div className="relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-rose-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
             <img 
-              src={MOCK_USER.avatar} 
-              alt={MOCK_USER.name} 
+              src={user.avatar} 
+              alt={user.name} 
               className="w-56 h-56 rounded-full border-[10px] border-white shadow-2xl relative z-10 transition-transform duration-700 group-hover:scale-105" 
             />
             <button className="absolute bottom-4 right-4 bg-gray-900 text-white w-14 h-14 rounded-3xl shadow-2xl border-4 border-white flex items-center justify-center hover:bg-orange-500 transition-all hover:rotate-12 z-20">
@@ -38,9 +32,9 @@ const ProfileView: React.FC = () => {
           <div className="flex-1 text-center md:text-left">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-8">
               <div>
-                <h2 className="text-5xl font-[900] text-gray-900 tracking-tight leading-none mb-3">{MOCK_USER.name}</h2>
+                <h2 className="text-5xl font-[900] text-gray-900 tracking-tight leading-none mb-3">{user.name}</h2>
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                   <span className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-full">@{MOCK_USER.username}</span>
+                   <span className="px-4 py-1.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-full">@{user.username}</span>
                    <span className="px-4 py-1.5 bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-widest rounded-full">Pro Critic</span>
                 </div>
               </div>
@@ -60,17 +54,17 @@ const ProfileView: React.FC = () => {
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Experiences</span>
               </div>
               <div className="text-center md:text-left">
-                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">1.2k</span>
+                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">{user.followers > 1000 ? (user.followers/1000).toFixed(1) + 'k' : user.followers}</span>
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Followers</span>
               </div>
               <div className="text-center md:text-left">
-                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">428</span>
+                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">{user.following}</span>
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Following</span>
               </div>
             </div>
             
             <p className="text-gray-500 text-xl leading-relaxed max-w-xl italic font-medium mx-auto md:mx-0">
-              "{MOCK_USER.bio}"
+              "{user.bio}"
             </p>
           </div>
         </div>
