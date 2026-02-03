@@ -1,15 +1,51 @@
 
 'use client';
 
-import React from "react";
-import { User } from "../types/types";
+import React, { useEffect, useState } from "react";
+import { User, Review } from "../types/types";
+import { supabase } from "../lib/supabase";
 
 interface ProfileViewProps {
   user: User;
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
-  return (
+    const [userReviews, setUserReviews] = useState<Review[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchUserReviews();
+    }, [user.id]);
+
+    const fetchUserReviews = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('reviews')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+        
+            if (data) {
+                const formattedReviews: Review[] = data.map(item => ({
+                    id: item.id,
+                    userId: item.user_id,
+                    userName: user.name, // Since it's the current user's profile
+                    userAvatar: user.avatar,
+                    restaurantName: item.restaurant_name,
+                    rating: item.rating,
+                    content: item.content,
+                    imageUrl: item.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80',
+                    timestamp: new Date(item.created_at).toLocaleDateString(),
+                    location: item.location
+                }));
+                setUserReviews(formattedReviews);
+            } else if (error) {
+                console.error("Error fetching user reviews:", error);
+            }
+            setLoading(false);
+        }
+        
+    return (
     <div className="max-w-6xl mx-auto py-20 px-6">
       <div className="bg-white rounded-[4rem] p-12 sm:p-20 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] border border-gray-50 mb-16 relative overflow-hidden">
         {/* Profile Design Elements */}
@@ -50,7 +86,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
             
             <div className="flex items-center justify-center md:justify-start gap-16 py-10 border-y border-gray-100 mb-8">
               <div className="text-center md:text-left">
-                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">42</span>
+                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">{userReviews.length}</span>
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Experiences</span>
               </div>
               <div className="text-center md:text-left">
@@ -64,7 +100,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
             </div>
             
             <p className="text-gray-500 text-xl leading-relaxed max-w-xl italic font-medium mx-auto md:mx-0">
-              "{user.bio}"
+              "{user.bio || 'Sharing my culinary journey one dish at a time.'}"
             </p>
           </div>
         </div>
@@ -80,30 +116,45 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="group relative aspect-[4/5] rounded-[2.5rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] transition-all duration-700">
-              <img 
-                src={`https://picsum.photos/seed/dish-hq-${i+60}/600/800`} 
-                alt="Post" 
-                className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000" 
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-8">
-                <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                   <h4 className="text-white font-bold text-lg leading-tight mb-4">Midnight Sushi Platter</h4>
-                   <div className="flex items-center gap-6 text-white/80">
-                    <span className="flex items-center gap-2 font-black text-xs">
-                      <i className="fas fa-heart text-rose-500"></i> 14
-                    </span>
-                    <span className="flex items-center gap-2 font-black text-xs">
-                      <i className="fas fa-comment text-orange-500"></i> 2
-                    </span>
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-[4/5] rounded-[2.5rem] bg-gray-100 animate-pulse"></div>
+            ))}
+          </div>
+        ) : userReviews.length === 0 ? (
+          <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-gray-300 mx-auto mb-4 shadow-sm">
+              <i className="fas fa-camera text-2xl"></i>
+            </div>
+            <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No culinary drops yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {userReviews.map((review) => (
+              <div key={review.id} className="group relative aspect-[4/5] rounded-[2.5rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] transition-all duration-700">
+                <img 
+                  src={review.imageUrl} 
+                  alt={review.restaurantName} 
+                  className="w-full h-full object-cover group-hover:scale-125 transition-transform duration-1000" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-8">
+                  <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                     <h4 className="text-white font-bold text-lg leading-tight mb-2 truncate">{review.restaurantName}</h4>
+                     <div className="flex items-center gap-6 text-white/80">
+                      <span className="flex items-center gap-2 font-black text-xs">
+                        <i className="fas fa-star text-orange-500"></i> {review.rating.toFixed(1)}
+                      </span>
+                      <span className="flex items-center gap-2 font-black text-xs">
+                        <i className="fas fa-comment text-orange-500"></i> {Math.floor(Math.random() * 5)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
