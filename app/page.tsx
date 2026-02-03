@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import { AppTab } from "./types/types";
 import Feed from "./components/Feed";
 import Discovery from "./components/Discovery";
+import ProfileView from "./components/ProfileView";
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('feed');
@@ -22,7 +23,7 @@ const App: React.FC = () => {
         <div className="container mx-auto">
           {activeTab === 'feed' && <Feed />}
           {activeTab === 'discover' && <Discovery />}
-          {/* {activeTab === 'profile' && <ProfileView />} */} 
+          {activeTab === 'profile' && <ProfileView />} 
         </div>
       </main>
       
