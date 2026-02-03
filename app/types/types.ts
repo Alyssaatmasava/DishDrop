@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -9,18 +10,20 @@ export interface User {
   email?: string;
 }
 
-
 export interface Review {
-    id: string;
-    userId: string;
-    userName: string;
-    userAvatar: string;
-    restaurantName: string;
-    rating: number;
-    content: string;
-    imageUrl: string;
-    timestamp: string;
-    location?: string;
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  restaurantName: string;
+  rating: number;
+  content: string;
+  imageUrl: string;
+  timestamp: string;
+  location?: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked?: boolean;
 }
 
 export interface GroundingSource {

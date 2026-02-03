@@ -10,45 +10,62 @@ interface ProfileViewProps {
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
-    const [userReviews, setUserReviews] = useState<Review[]>([]);
-    const [loading, setLoading] = useState(true);
+  const [userReviews, setUserReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchUserReviews();
-    }, [user.id]);
+  useEffect(() => {
+    fetchUserReviews();
+  }, [user.id]);
 
-    const fetchUserReviews = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('reviews')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false });
-        
-            if (data) {
-                const formattedReviews: Review[] = data.map(item => ({
-                    id: item.id,
-                    userId: item.user_id,
-                    userName: user.name, // Since it's the current user's profile
-                    userAvatar: user.avatar,
-                    restaurantName: item.restaurant_name,
-                    rating: item.rating,
-                    content: item.content,
-                    imageUrl: item.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80',
-                    timestamp: new Date(item.created_at).toLocaleDateString(),
-                    location: item.location
-                }));
-                setUserReviews(formattedReviews);
-            } else if (error) {
-                console.error("Error fetching user reviews:", error);
-            }
-            setLoading(false);
-        }
-        
-    return (
+  const fetchUserReviews = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Simplified query to only fetch from existing reviews table
+      const { data, error: dbError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (dbError) {
+        console.error("Profile Fetch Error:", dbError);
+        setError(dbError.message);
+        return;
+      }
+
+      if (data) {
+        const formattedReviews: Review[] = (data as any[]).map(item => ({
+          id: item.id,
+          userId: item.user_id,
+          userName: user.name,
+          userAvatar: user.avatar,
+          restaurantName: item.restaurant_name,
+          rating: Number(item.rating),
+          content: item.content || '',
+          imageUrl: item.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80',
+          timestamp: new Date(item.created_at).toLocaleDateString(),
+          location: item.location || 'NYC',
+          likesCount: 0,
+          commentsCount: 0,
+          isLiked: false
+        }));
+        setUserReviews(formattedReviews);
+      }
+    } catch (err: any) {
+      console.error("Unexpected profile history error:", err);
+      setError("Could not load your history.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
     <div className="max-w-6xl mx-auto py-20 px-6">
       <div className="bg-white rounded-[4rem] p-12 sm:p-20 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] border border-gray-50 mb-16 relative overflow-hidden">
-        {/* Profile Design Elements */}
+        {/* Background Accents */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-orange-500/5 rounded-full -mr-40 -mt-40 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-rose-500/5 rounded-full -ml-32 -mb-32 blur-3xl"></div>
 
@@ -78,9 +95,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
                 <button className="bg-gray-900 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-orange-500 transition-all shadow-xl shadow-gray-200 active:scale-95">
                   Edit Profile
                 </button>
-                <button className="w-16 h-16 bg-gray-50 flex items-center justify-center rounded-[1.5rem] text-gray-400 hover:text-gray-900 transition-all">
-                  <i className="fas fa-share-alt"></i>
-                </button>
               </div>
             </div>
             
@@ -90,7 +104,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Experiences</span>
               </div>
               <div className="text-center md:text-left">
-                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">{user.followers > 1000 ? (user.followers/1000).toFixed(1) + 'k' : user.followers}</span>
+                <span className="block font-black text-4xl text-gray-900 leading-none mb-2">{user.followers}</span>
                 <span className="text-gray-400 text-[11px] font-black uppercase tracking-[0.3em]">Followers</span>
               </div>
               <div className="text-center md:text-left">
@@ -112,7 +126,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
           <div className="bg-gray-100 p-2 rounded-[1.5rem] flex gap-2">
             <button className="bg-white text-gray-900 px-8 py-2.5 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest shadow-sm">Grid</button>
             <button className="text-gray-400 hover:text-gray-600 px-8 py-2.5 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest transition-colors">Saved</button>
-            <button className="text-gray-400 hover:text-gray-600 px-8 py-2.5 rounded-[1.2rem] text-[11px] font-black uppercase tracking-widest transition-colors">Map</button>
           </div>
         </div>
 
@@ -121,6 +134,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
             {[...Array(4)].map((_, i) => (
               <div key={i} className="aspect-[4/5] rounded-[2.5rem] bg-gray-100 animate-pulse"></div>
             ))}
+          </div>
+        ) : error ? (
+           <div className="text-center py-20 bg-rose-50 rounded-[3rem] border-2 border-dashed border-rose-100 p-10">
+            <p className="text-rose-500 font-bold mb-4">{error}</p>
+            <button onClick={() => fetchUserReviews()} className="text-xs font-black uppercase tracking-widest underline decoration-2 underline-offset-4">Try reloading history</button>
           </div>
         ) : userReviews.length === 0 ? (
           <div className="text-center py-20 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
@@ -144,9 +162,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
                      <div className="flex items-center gap-6 text-white/80">
                       <span className="flex items-center gap-2 font-black text-xs">
                         <i className="fas fa-star text-orange-500"></i> {review.rating.toFixed(1)}
-                      </span>
-                      <span className="flex items-center gap-2 font-black text-xs">
-                        <i className="fas fa-comment text-orange-500"></i> {Math.floor(Math.random() * 5)}
                       </span>
                     </div>
                   </div>
