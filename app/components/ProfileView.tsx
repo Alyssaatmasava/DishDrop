@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { User, Review } from "../types/types";
 import { supabase } from "../lib/supabase";
 
@@ -16,6 +16,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<Review | null>(null);
   const [activeTab, setActiveTab] = useState<'history' | 'saved'>('history');
+
+  // Edit Profile State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(user.name);
+  const [editBio, setEditBio] = useState(user.bio);
+  const [avatarPreview, setAvatarPreview] = useState(user.avatar);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync edit state when user prop changes
+  useEffect(() => {
+    setEditName(user.name);
+    setEditBio(user.bio);
+    setAvatarPreview(user.avatar);
+  }, [user]);
 
   // Fetch the actual experience count independently of the active tab
   useEffect(() => {
@@ -95,11 +110,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
             isLiked: Array.isArray(item.likes) ? item.likes.some((l: any) => l.user_id === user.id) : false,
             isSaved: Array.isArray(item.saves) ? item.saves.some((s: any) => s.user_id === user.id) : false
           }));
-          // Also sync the experience count if we just fetched all history
           setExperienceCount(formatted.length);
         } else {
           formatted = (data as any[])
-            .filter(item => item.review) // Filter out any orphaned saves
+            .filter(item => item.review)
             .map(item => {
               const r = item.review;
               return {
@@ -178,6 +192,50 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
     }
   };
 
+  // Profile Edit Handlers
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editName,
+          bio: editBio,
+          avatar_url: avatarPreview
+        })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+      
+      setIsEditing(false);
+      // We don't need to refresh manually as App.tsx listens to auth changes 
+      // but a quick reload or state update would be better. For now, we assume App.tsx's state
+      // will eventually refresh or the user will see it on next visit.
+      // Better: force a reload or use a window event.
+      window.location.reload(); 
+    } catch (err: any) {
+      console.error("Error saving profile:", err);
+      alert("Failed to update profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto py-20 px-6">
       {/* Profile Header */}
@@ -193,7 +251,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
               alt={user.name} 
               className="w-56 h-56 rounded-full border-[10px] border-white shadow-2xl relative z-10 transition-transform duration-700 group-hover:scale-105" 
             />
-            <button className="absolute bottom-4 right-4 bg-gray-900 text-white w-14 h-14 rounded-3xl shadow-2xl border-4 border-white flex items-center justify-center hover:bg-orange-500 transition-all hover:rotate-12 z-20">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              accept="image/*" 
+              className="hidden" 
+            />
+            <button 
+              onClick={handleAvatarClick}
+              className="absolute bottom-4 right-4 bg-gray-900 text-white w-14 h-14 rounded-3xl shadow-2xl border-4 border-white flex items-center justify-center hover:bg-orange-500 transition-all hover:rotate-12 z-20 cursor-pointer"
+            >
               <i className="fas fa-camera-retro"></i>
             </button>
           </div>
@@ -208,7 +276,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
                 </div>
               </div>
               <div className="flex gap-4">
-                <button className="bg-gray-900 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-orange-500 transition-all shadow-xl shadow-gray-200 active:scale-95">
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="bg-gray-900 text-white px-10 py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] hover:bg-orange-500 transition-all shadow-xl shadow-gray-200 active:scale-95"
+                >
                   Edit Profile
                 </button>
               </div>
@@ -309,6 +380,82 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-10">
+          <div 
+            className="absolute inset-0 bg-gray-900/40 backdrop-blur-xl transition-opacity animate-in fade-in duration-300" 
+            onClick={() => setIsEditing(false)}
+          ></div>
+          
+          <div className="relative w-full max-w-xl bg-white rounded-[3.5rem] overflow-hidden shadow-2xl animate-in zoom-in fade-in duration-300">
+            <div className="p-8 border-b border-gray-50 flex items-center justify-between sticky top-0 bg-white/80 backdrop-blur-md z-10">
+              <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase italic leading-none">Edit Profile</h3>
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="w-12 h-12 bg-gray-50 flex items-center justify-center rounded-2xl text-gray-300 hover:text-gray-900 transition-all"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            <div className="p-8 sm:p-10 space-y-8">
+              <div className="flex flex-col items-center gap-4 mb-4">
+                <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
+                   <img 
+                    src={avatarPreview} 
+                    className="w-32 h-32 rounded-full border-4 border-orange-50 shadow-lg object-cover group-hover:opacity-80 transition-all" 
+                    alt="Avatar Preview" 
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                    <i className="fas fa-camera text-2xl text-white drop-shadow-lg"></i>
+                  </div>
+                </div>
+                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Tap to change avatar</p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] ml-1">Display Name</label>
+                <input 
+                  type="text" 
+                  value={editName} 
+                  onChange={(e) => setEditName(e.target.value)} 
+                  placeholder="Your Name" 
+                  className="w-full bg-gray-50 border-0 rounded-2xl py-5 px-6 focus:ring-4 focus:ring-orange-500/5 outline-none font-bold" 
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] ml-1">Bio</label>
+                <textarea 
+                  value={editBio} 
+                  onChange={(e) => setEditBio(e.target.value)} 
+                  placeholder="Tell us about your palate..." 
+                  rows={4} 
+                  className="w-full bg-gray-50 border-0 rounded-[2rem] py-6 px-8 outline-none resize-none font-bold placeholder:text-gray-300" 
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 bg-gray-50 text-gray-400 font-black py-6 rounded-[2rem] hover:bg-gray-100 transition-all uppercase tracking-widest text-xs"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveProfile}
+                  disabled={isSaving || !editName}
+                  className="flex-1 bg-gray-900 text-white font-black py-6 rounded-[2rem] shadow-xl hover:bg-orange-500 transition-all uppercase tracking-widest text-xs disabled:bg-gray-100"
+                >
+                  {isSaving ? <i className="fas fa-spinner animate-spin"></i> : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Expanded Post Modal */}
       {selectedPost && (
