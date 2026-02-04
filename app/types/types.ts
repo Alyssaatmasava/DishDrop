@@ -24,6 +24,7 @@ export interface Review {
   likesCount: number;
   commentsCount: number;
   isLiked?: boolean;
+  isSaved? : boolean;
 }
 
 export interface GroundingSource {

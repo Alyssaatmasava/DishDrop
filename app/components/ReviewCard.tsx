@@ -10,42 +10,50 @@ interface ReviewCardProps {
 const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
   const [isLiked, setIsLiked] = useState(review.isLiked);
   const [likesCount, setLikesCount] = useState(review.likesCount);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(review.isSaved || false);
   const [showComments, setShowComments] = useState(false);
 
   const handleLike = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) return;
 
-    // Optimistic UI update
     const newLikedState = !isLiked;
     setIsLiked(newLikedState);
     setLikesCount(prev => newLikedState ? prev + 1 : Math.max(0, prev - 1));
 
     try {
       if (newLikedState) {
-        const { error } = await supabase
-          .from('likes')
-          .insert({ 
-            user_id: session.user.id, 
-            review_id: review.id 
-          });
+        const { error } = await supabase.from('likes').insert({ user_id: session.user.id, review_id: review.id });
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .match({ 
-            user_id: session.user.id, 
-            review_id: review.id 
-          });
+        const { error } = await supabase.from('likes').delete().match({ user_id: session.user.id, review_id: review.id });
         if (error) throw error;
       }
     } catch (err) {
       console.error("Error toggling like:", err);
-      // Revert optimistic update on error
       setIsLiked(!newLikedState);
       setLikesCount(prev => !newLikedState ? prev + 1 : Math.max(0, prev - 1));
+    }
+  };
+
+  const handleSave = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    const newSavedState = !isSaved;
+    setIsSaved(newSavedState);
+
+    try {
+      if (newSavedState) {
+        const { error } = await supabase.from('saves').insert({ user_id: session.user.id, review_id: review.id });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('saves').delete().match({ user_id: session.user.id, review_id: review.id });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Error toggling save:", err);
+      setIsSaved(!newSavedState);
     }
   };
 
@@ -84,7 +92,6 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
           alt={review.restaurantName} 
           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
         />
-        {/* Rating Overlay */}
         <div className="absolute top-6 right-6 glass px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2">
           <i className="fas fa-star text-orange-500 text-sm"></i>
           <span className="text-gray-900 font-extrabold text-sm">{review.rating.toFixed(1)}</span>
@@ -99,7 +106,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
             <span className="text-xs font-semibold text-orange-500">{review.timestamp} • {review.location || 'NYC'}</span>
           </div>
           <button 
-            onClick={() => setIsSaved(!isSaved)}
+            onClick={handleSave}
             className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all ${
               isSaved ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-gray-50 text-gray-300 hover:text-gray-900 hover:bg-gray-100'
             }`}

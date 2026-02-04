@@ -20,51 +20,56 @@ const Feed: React.FC = () => {
     setFetchError(null);
     
     try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const currentUserId = session?.user?.id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
 
-        // Now joining with likes and comments tables
-        const { data, error } = await supabase
-            .from('reviews')
-            .select(`
-                *,
-                profiles!inner (
-                    full_name,
-                    username,
-                    avatar_url
-                ),
-                likes (
-                    user_id
-                ),
-                comments (
-                    id
-                )
-            `)
-            .order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+          *,
+          profiles!inner (
+            full_name,
+            username,
+            avatar_url
+          ),
+          likes (
+            user_id
+          ),
+          comments (
+            id
+          ),
+          saves (
+            user_id
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error("Supabase Feed Error:", error);
-            setFetchError(error.message);
-            return;
-        }
+      if (error) {
+        console.error("Supabase Feed Error:", error);
+        setFetchError(error.message);
+        return;
+      }
 
-        if (data) {
-            const formattedReviews: Review[] = (data as any[]).map(item => ({
-            id: item.id,
-            userId: item.user_id,
-            userName: item.profiles?.full_name || 'Anonymous',
-            userAvatar: item.profiles?.avatar_url || `https://picsum.photos/seed/${item.user_id}/100/100`,
-            restaurantName: item.restaurant_name,
-            rating: Number(item.rating),
-            content: item.content || '',
-            imageUrl: item.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80',
-            timestamp: new Date(item.created_at).toLocaleDateString(),
-            location: item.location || 'NYC',
-            likesCount: Array.isArray(item.likes) ? item.likes.length : 0,
-            commentsCount: Array.isArray(item.comments) ? item.comments.length : 0,
-            isLiked: currentUserId && Array.isArray(item.likes) 
-                ? item.likes.some((l: any) => l.user_id === currentUserId) 
-                : false
+      if (data) {
+        const formattedReviews: Review[] = (data as any[]).map(item => ({
+          id: item.id,
+          userId: item.user_id,
+          userName: item.profiles?.full_name || 'Anonymous',
+          userAvatar: item.profiles?.avatar_url || `https://picsum.photos/seed/${item.user_id}/100/100`,
+          restaurantName: item.restaurant_name,
+          rating: Number(item.rating),
+          content: item.content || '',
+          imageUrl: item.image_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80',
+          timestamp: new Date(item.created_at).toLocaleDateString(),
+          location: item.location || 'NYC',
+          likesCount: Array.isArray(item.likes) ? item.likes.length : 0,
+          commentsCount: Array.isArray(item.comments) ? item.comments.length : 0,
+          isLiked: currentUserId && Array.isArray(item.likes) 
+            ? item.likes.some((l: any) => l.user_id === currentUserId) 
+            : false,
+          isSaved: currentUserId && Array.isArray(item.saves)
+            ? item.saves.some((s: any) => s.user_id === currentUserId)
+            : false
         }));
         setReviews(formattedReviews);
       }
@@ -76,7 +81,7 @@ const Feed: React.FC = () => {
     }
   };
 
-    if (loading) {
+  if (loading) {
     return (
       <div className="flex flex-col gap-8 max-w-xl mx-auto py-8 px-4">
         {[...Array(3)].map((_, i) => (
