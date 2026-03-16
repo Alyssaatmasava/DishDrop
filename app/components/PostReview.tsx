@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { User } from "../types/types";
 
@@ -14,18 +14,65 @@ const PostReview: React.FC<PostReviewProps> = ({ user, onPostSuccess }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [restaurant, setRestaurant] = useState('');
   const [location, setLocation] = useState('');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [locationResults, setLocationResults] = useState<any[]>([]);
+  const [isLocationSearching, setIsLocationSearching] = useState(false);
   const [review, setReview] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch locations from OpenStreetMap Nominatim API based on user query
+  useEffect(() => {
+    if (!locationQuery || locationQuery.length < 3) {
+      setLocationResults([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      try {
+        setIsLocationSearching(true);
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+            locationQuery
+          )}&limit=5`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch locations");
+        }
+
+        const data = await response.json();
+        setLocationResults(Array.isArray(data) ? data : []);
+      } catch (error) {
+        if ((error as any).name !== "AbortError") {
+          console.error("Error fetching locations from OpenStreetMap:", error);
+        }
+      } finally {
+        setIsLocationSearching(false);
+      }
+    }, 400); // simple debounce so we don't hit the API on every keystroke
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [locationQuery]);
+
   const resetForm = () => {
     setRating(0);
-    setRestaurant('');
     setLocation('');
+    setLocationQuery('');
+    setLocationResults([]);
     setReview('');
     setImagePreview(null);
   };
@@ -46,8 +93,21 @@ const PostReview: React.FC<PostReviewProps> = ({ user, onPostSuccess }) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLocation(value);
+    setLocationQuery(value);
+  };
+
+  const handleSelectLocation = (place: any) => {
+    // Use the full display name for now, similar to Instagram-style labels
+    setLocation(place.display_name || '');
+    setLocationQuery(place.display_name || '');
+    setLocationResults([]);
+  };
+
   const handlePublish = async () => {
-    if (!restaurant || !rating || !location) return;
+    if (!rating || !location) return;
     setIsPublishing(true);
 
     try {
@@ -55,10 +115,13 @@ const PostReview: React.FC<PostReviewProps> = ({ user, onPostSuccess }) => {
         // For this prototype, we'll use the base64 string or a fallback if no image is provided.
       const finalImageUrl = imagePreview || `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80`;
 
+      // Derive a primary name from the location (first part of the string before a comma)
+      const primaryName = location.split(',')[0]?.trim() || location;
+
       const { error } = await supabase.from('reviews').insert([
         {
           user_id: user.id,
-          restaurant_name: restaurant,
+          restaurant_name: primaryName,
           rating: rating,
           content: review,
           image_url: finalImageUrl,
@@ -101,28 +164,45 @@ const PostReview: React.FC<PostReviewProps> = ({ user, onPostSuccess }) => {
             </div>
             
             <div className="p-8 sm:p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] ml-1">Restaurant *</label>
-                  <input 
-                    type="text" 
-                    value={restaurant} 
-                    onChange={(e) => setRestaurant(e.target.value)} 
-                    placeholder="Where did you eat?" 
-                    className="w-full bg-gray-50 border-0 rounded-2xl py-5 px-6 focus:ring-4 focus:ring-orange-500/5 outline-none font-bold" 
-                  />
-                </div>
-                <div className="space-y-3">
+              <div className="space-y-3 relative">
                   <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] ml-1">Location *</label>
                   <input 
                     type="text" 
                     value={location} 
-                    onChange={(e) => setLocation(e.target.value)} 
-                    placeholder="City or Neighborhood" 
+                    onChange={handleLocationChange} 
+                    placeholder="Search for a place" 
                     className="w-full bg-gray-50 border-0 rounded-2xl py-5 px-6 focus:ring-4 focus:ring-orange-500/5 outline-none font-bold" 
                   />
+                  {(locationQuery && locationQuery.length >= 3 && (isLocationSearching || locationResults.length > 0)) && (
+                    <div className="absolute left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 max-h-60 overflow-y-auto z-20">
+                      {isLocationSearching && (
+                        <div className="px-4 py-3 text-[11px] font-bold text-gray-400 uppercase tracking-[0.2em]">
+                          Searching places...
+                        </div>
+                      )}
+                      {!isLocationSearching && locationResults.length === 0 && (
+                        <div className="px-4 py-3 text-sm text-gray-400">
+                          No places found. Try a different search.
+                        </div>
+                      )}
+                      {locationResults.map((place) => (
+                        <button
+                          key={place.place_id}
+                          type="button"
+                          onClick={() => handleSelectLocation(place)}
+                          className="w-full text-left px-4 py-3 text-sm hover:bg-orange-50 border-b border-gray-50 last:border-b-0"
+                        >
+                          <div className="font-semibold text-gray-900 line-clamp-1">
+                            {place.display_name?.split(",")[0] || place.display_name}
+                          </div>
+                          <div className="text-xs text-gray-400 line-clamp-1">
+                            {place.display_name}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
 
               <div className="space-y-4">
                 <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.3em] ml-1">Rating</label>
@@ -198,7 +278,7 @@ const PostReview: React.FC<PostReviewProps> = ({ user, onPostSuccess }) => {
 
               <button 
                 onClick={handlePublish} 
-                disabled={isPublishing || !restaurant || !rating || !location} 
+                disabled={isPublishing || !rating || !location} 
                 className="w-full bg-gray-900 text-white font-black py-7 rounded-[2rem] shadow-2xl hover:bg-orange-500 transition-all uppercase tracking-[0.3em] text-xs disabled:bg-gray-100 disabled:text-gray-300 disabled:shadow-none"
               >
                 {isPublishing ? (

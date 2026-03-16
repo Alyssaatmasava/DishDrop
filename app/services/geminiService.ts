@@ -15,12 +15,33 @@ export const findRestaurantsByCraving = async (
     ? `Near coordinates ${location.lat}, ${location.lng}` 
     : "in a major city";
 
-  const prompt = `I am craving: "${craving}". 
-  ${locationContext}. 
-  Suggest 3-4 restaurants that would match this craving. 
-  Explain briefly why each fits.
-  
-  Note: These are suggestions based on general knowledge, not real-time search results.`;
+  const prompt = `You are DishDrop's AI food guide.
+
+I am craving: "${craving}".
+User is located: ${locationContext}.
+
+Task:
+- Suggest 3-4 specific restaurants that match this craving and location.
+- Use your general knowledge to pick *real* restaurants that fit well.
+- For each restaurant, include its *official website URL* if you know it.
+
+STRICT FORMAT (Markdown):
+
+Intro section (1-3 paragraphs) explaining how the craving and area influence your picks. You may use **bold** and *italics* here.
+
+Then, for each restaurant, follow this exact pattern:
+
+### 1. Restaurant Name (Neighborhood / Mall / Area)
+* **Why it fits:** Short explanation of why this matches the craving.
+* **Best for:** Short description of ideal occasion.
+* **Vibe:** Optional, 1 sentence about atmosphere.
+* Official website: https://example.com
+
+Rules:
+- "Official website:" MUST be on its own line for each restaurant, followed by a single URL that starts with http:// or https://.
+- If you cannot find the official website, use the best primary link (e.g. Google Maps place, the restaurant's main profile on a major review/delivery site).
+- Do NOT output JSON.
+- Do NOT include any other headings besides the "###" restaurant headings.`;
 
   let lastError: any;
   for (let i = 0; i < maxRetries; i++) {
