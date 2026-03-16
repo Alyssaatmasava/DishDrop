@@ -1,7 +1,6 @@
 # DishDrop
 
 ![DishDrop screenshot](public/screenshot.png)
-![DishDrop screenshot](public/screenshot-2.png)![DishDrop screenshot](public/screenshot-3.png)
 
 DishDrop is a social dining Next.js app with Supabase auth and Gemini-powered craving discovery.
 
